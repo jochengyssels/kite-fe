@@ -1,10 +1,22 @@
 import "server-only"
 import type { KiteSpot } from "@/types/kitespot"
+import { redirect } from "next/navigation"
 
 // Cache options
 const cacheOptions = {
   // Cache for 5 minutes
   next: { revalidate: 300 },
+}
+// This is just a placeholder to prevent import errors
+// All actual functionality should use the client-side API service
+export async function getKiteSpotByName(name: string) {
+  console.warn("getKiteSpotByName from kitespots-server.ts is deprecated. Use the client-side API service instead.")
+  redirect(`/spots/${encodeURIComponent(name)}`)
+}
+
+export async function getAllKiteSpots() {
+  console.warn("getAllKiteSpots from kitespots-server.ts is deprecated. Use the client-side API service instead.")
+  redirect("/spots")
 }
 
 // Server-side data fetching function
@@ -25,17 +37,6 @@ export async function getKiteSpots(): Promise<KiteSpot[]> {
   }
 }
 
-// Get a single kitespot by name
-export async function getKiteSpotByName(name: string): Promise<KiteSpot | null> {
-  try {
-    // For demo purposes, we'll use the mock data
-    const kiteSpots = await getMockKiteSpots()
-    return kiteSpots.find((spot) => spot.name.toLowerCase() === name.toLowerCase()) || null
-  } catch (error) {
-    console.error(`Error fetching kitespot ${name}:`, error)
-    return null
-  }
-}
 
 // Get forecast data for a specific kitespot
 export async function getKiteSpotForecast(kitespotId: string): Promise<any> {
