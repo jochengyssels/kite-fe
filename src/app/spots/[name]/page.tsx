@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MapPin, Wind, Waves, Calendar, Info, ArrowLeft, Star, Loader2 } from "lucide-react"
 import Link from "next/link"
-import { getSpotByName } from "@/lib/kitespots-server" // This is fine in a server component
+import { getKiteSpotByName } from "@/lib/kitespots-server" // This is fine in a server component
 import { notFound } from "next/navigation"
 
 // Import your components - these would need to be updated to work with the new data structure
@@ -30,7 +30,7 @@ interface GoldenWindow {
 
 // Fetch data from your API
 async function getSpotData(name: string) {
-  const spot = await getSpotByName(name)
+  const spot = await getKiteSpotByName(name)
 
   if (!spot) {
     return null

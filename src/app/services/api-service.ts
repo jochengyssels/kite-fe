@@ -12,19 +12,41 @@ export interface KiteSpot {
   water_type: "Flat" | "Choppy" | "Waves"
   best_months: string[]
   description?: string
+  image_url?: string
+  rating?: number
 }
 
 // Get the API base URL from environment variable
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
+// Helper function to handle fetch errors
+async function fetchWithErrorHandling<T>(url: string, errorMessage: string): Promise<T> {
+  try {
+    const response = await fetch(url, {
+      // Add cache: 'no-store' to disable caching or next: { revalidate: 60 } to revalidate every 60 seconds
+      cache: "no-store",
+    })
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null as T
+      }
+      throw new Error(`${errorMessage} (Status: ${response.status})`)
+    }
+
+    return response.json()
+  } catch (error) {
+    console.error(`${errorMessage}:`, error)
+    throw error
+  }
+}
+
 // Client-side API service for fetching data
 export async function getAllKiteSpots(): Promise<KiteSpot[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/kitespots`)
-    if (!response.ok) {
-      throw new Error("Failed to fetch kitespots")
-    }
-    return response.json()
+    return (
+      (await fetchWithErrorHandling<KiteSpot[]>(`${API_BASE_URL}/api/kitespots`, "Failed to fetch kitespots")) || []
+    )
   } catch (error) {
     console.error("Error fetching kitespots:", error)
     return []
@@ -33,12 +55,12 @@ export async function getAllKiteSpots(): Promise<KiteSpot[]> {
 
 export async function getKiteSpotsByCountry(country: string): Promise<KiteSpot[]> {
   try {
-    // Use the filter parameter on the main endpoint
-    const response = await fetch(`${API_BASE_URL}/api/kitespots?country=${encodeURIComponent(country)}`)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch kitespots for country: ${country}`)
-    }
-    return response.json()
+    return (
+      (await fetchWithErrorHandling<KiteSpot[]>(
+        `${API_BASE_URL}/api/kitespots?country=${encodeURIComponent(country)}`,
+        `Failed to fetch kitespots for country: ${country}`,
+      )) || []
+    )
   } catch (error) {
     console.error(`Error fetching kitespots for country ${country}:`, error)
     return []
@@ -47,12 +69,12 @@ export async function getKiteSpotsByCountry(country: string): Promise<KiteSpot[]
 
 export async function getKiteSpotsByDifficulty(difficulty: string): Promise<KiteSpot[]> {
   try {
-    // Use the filter parameter on the main endpoint
-    const response = await fetch(`${API_BASE_URL}/api/kitespots?difficulty=${encodeURIComponent(difficulty)}`)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch kitespots for difficulty: ${difficulty}`)
-    }
-    return response.json()
+    return (
+      (await fetchWithErrorHandling<KiteSpot[]>(
+        `${API_BASE_URL}/api/kitespots?difficulty=${encodeURIComponent(difficulty)}`,
+        `Failed to fetch kitespots for difficulty: ${difficulty}`,
+      )) || []
+    )
   } catch (error) {
     console.error(`Error fetching kitespots for difficulty ${difficulty}:`, error)
     return []
@@ -61,12 +83,12 @@ export async function getKiteSpotsByDifficulty(difficulty: string): Promise<Kite
 
 export async function getKiteSpotsByWaterType(waterType: string): Promise<KiteSpot[]> {
   try {
-    // Use the filter parameter on the main endpoint
-    const response = await fetch(`${API_BASE_URL}/api/kitespots?water_type=${encodeURIComponent(waterType)}`)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch kitespots for water type: ${waterType}`)
-    }
-    return response.json()
+    return (
+      (await fetchWithErrorHandling<KiteSpot[]>(
+        `${API_BASE_URL}/api/kitespots?water_type=${encodeURIComponent(waterType)}`,
+        `Failed to fetch kitespots for water type: ${waterType}`,
+      )) || []
+    )
   } catch (error) {
     console.error(`Error fetching kitespots for water type ${waterType}:`, error)
     return []
@@ -75,14 +97,10 @@ export async function getKiteSpotsByWaterType(waterType: string): Promise<KiteSp
 
 export async function getKiteSpotByName(name: string): Promise<KiteSpot | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/kitespots/${encodeURIComponent(name)}`)
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null
-      }
-      throw new Error(`Failed to fetch kitespot: ${name}`)
-    }
-    return response.json()
+    return await fetchWithErrorHandling<KiteSpot | null>(
+      `${API_BASE_URL}/api/kitespots/${encodeURIComponent(name)}`,
+      `Failed to fetch kitespot: ${name}`,
+    )
   } catch (error) {
     console.error(`Error fetching kitespot ${name}:`, error)
     return null
@@ -121,13 +139,12 @@ export async function getFilteredKiteSpots(
       params.append("water_type", waterType)
     }
 
-    const url = `${API_BASE_URL}/api/kitespots?${params.toString()}`
-    const response = await fetch(url)
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch filtered kitespots")
-    }
-    return response.json()
+    return (
+      (await fetchWithErrorHandling<KiteSpot[]>(
+        `${API_BASE_URL}/api/kitespots?${params.toString()}`,
+        "Failed to fetch filtered kitespots",
+      )) || []
+    )
   } catch (error) {
     console.error("Error fetching filtered kitespots:", error)
     return []
@@ -146,15 +163,44 @@ export async function getRecommendedKiteSpots(difficulty?: string, month?: strin
       params.append("month", month)
     }
 
-    const url = `${API_BASE_URL}/api/kitespots/recommended?${params.toString()}`
-    const response = await fetch(url)
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch recommended kitespots")
-    }
-    return response.json()
+    return (
+      (await fetchWithErrorHandling<KiteSpot[]>(
+        `${API_BASE_URL}/api/kitespots/recommended?${params.toString()}`,
+        "Failed to fetch recommended kitespots",
+      )) || []
+    )
   } catch (error) {
     console.error("Error fetching recommended kitespots:", error)
+    return []
+  }
+}
+
+// New function to search kitespots by name or location
+export async function searchKiteSpots(query: string): Promise<KiteSpot[]> {
+  try {
+    return (
+      (await fetchWithErrorHandling<KiteSpot[]>(
+        `${API_BASE_URL}/api/kitespots/search?q=${encodeURIComponent(query)}`,
+        `Failed to search kitespots for: ${query}`,
+      )) || []
+    )
+  } catch (error) {
+    console.error(`Error searching kitespots for ${query}:`, error)
+    return []
+  }
+}
+
+// New function to get spots by month
+export async function getKiteSpotsByMonth(month: string): Promise<KiteSpot[]> {
+  try {
+    return (
+      (await fetchWithErrorHandling<KiteSpot[]>(
+        `${API_BASE_URL}/api/kitespots?month=${encodeURIComponent(month)}`,
+        `Failed to fetch kitespots for month: ${month}`,
+      )) || []
+    )
+  } catch (error) {
+    console.error(`Error fetching kitespots for month ${month}:`, error)
     return []
   }
 }
