@@ -1,27 +1,53 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import axios from "axios"
-import { Compass, Loader2, Wind } from "lucide-react"
 import { Card } from "@/components/ui/card"
+import { Compass, Loader2, Wind } from "lucide-react"
 import WindDisplay from "@/components/wind-display"
+import ThemeToggle from "@/components/theme-toggle"
 import ForecastWeather from "@/components/cards/forecast-weather"
 import RealtimeWeather from "@/components/cards/realtime-weather"
 import FullForecastWeather from "@/components/cards/full-forecast-weather"
 import WindVisualization from "@/components/wind-visualization"
 import GoldenKiteLine from "@/components/cards/goldenKiteline"
 import KitesurfingNews from "@/components/cards/kitesurfingnews"
-import ThemeToggle from "@/components/theme-toggle"
 import UnifiedInput from "@/components/unified-input"
 
+interface LocationSuggestion {
+  display_name: string
+  place_id?: string
+  // Add other properties if needed
+}
+
+interface KitespotSuggestion {
+  name: string
+  location: string
+  country: string
+}
+
 export default function Page() {
+  const router = useRouter()
   const [query, setQuery] = useState("")
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [results, setResults] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const [autocompleteLoading, setAutocompleteLoading] = useState(false)
   const [isFadingOut, setIsFadingOut] = useState(false)
   const [chatMessages, setChatMessages] = useState<{ role: string; content: string }[]>([])
   const [isChat, setIsChat] = useState(false)
+  const [kitespotSuggestions, setKitespotSuggestions] = useState<KitespotSuggestion[]>([])
+
+  // Cache for autocomplete results
+  const autocompleteCache = useRef<Record<string, { data: string[]; timestamp: number }>>({})
+  const CACHE_EXPIRY = 3600 * 1000 // 1 hour in milliseconds
+
+  // Debounce timer
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Get the API URL with a fallback
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
   const handleSearch = async (selectedLocation?: string) => {
     const locationToSearch = selectedLocation || query
@@ -48,9 +74,7 @@ export default function Page() {
     setIsChat(false)
     setLoading(true)
     try {
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/weather?location=${encodeURIComponent(locationToSearch)}`,
-      )
+      const response = await axios.get(`${apiUrl}/api/weather?location=${encodeURIComponent(locationToSearch)}`)
       setResults({
         location: locationToSearch,
         basic: response.data.basic,
@@ -72,7 +96,8 @@ export default function Page() {
     setChatMessages((prev) => [...prev, { role: "user", content: question }])
 
     try {
-      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/chat`, {
+      console.log(`Sending chat request to: ${apiUrl}/api/chat`)
+      const response = await axios.post(`${apiUrl}/api/chat`, {
         location: question,
       })
 
@@ -93,8 +118,13 @@ export default function Page() {
     setQuery("")
   }
 
-  const handleAutocomplete = async (value: string): Promise<string[]> => {
+  const handleAutocomplete = async (value: string) => {
     setQuery(value)
+
+    // Clear any existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
 
     // Only fetch location suggestions if it doesn't look like a chat query
     if (
@@ -108,32 +138,137 @@ export default function Page() {
       !value.toLowerCase().startsWith("do") &&
       !value.toLowerCase().startsWith("tell")
     ) {
-      try {
-        const responsechat = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/chat`, { location: value })
-        const suggestions = responsechat.data.reply.split("\n")
-        setSuggestions(suggestions)
-        return suggestions
-      } catch (error) {
-        console.error("❌ Error fetching AI response:", error)
+      if (value.trim().length > 2) {
+        // Only search if at least 3 characters
+        // Set a new timer to delay the API call
+        debounceTimerRef.current = setTimeout(async () => {
+          try {
+            // Check cache first
+            const cacheKey = value.toLowerCase().trim()
+            if (
+              autocompleteCache.current[cacheKey] &&
+              Date.now() - autocompleteCache.current[cacheKey].timestamp < CACHE_EXPIRY
+            ) {
+              console.log(`Using cached results for query: ${value}`)
+              setSuggestions(autocompleteCache.current[cacheKey].data)
+              return
+            }
+
+            setAutocompleteLoading(true)
+
+            // Fetch location suggestions from FastAPI with timeout
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+
+            try {
+              // Fetch location suggestions from FastAPI
+              const response = await axios.get<LocationSuggestion[]>(
+                `${apiUrl}/api/autocomplete?q=${encodeURIComponent(value)}&limit=5&dedupe=1`,
+                { signal: controller.signal },
+              )
+
+              clearTimeout(timeoutId)
+
+              const suggestions: LocationSuggestion[] = response.data
+              // Format suggestions for display
+              const formattedSuggestions = suggestions.map((suggestion) => suggestion.display_name)
+              console.log("API autocomplete suggestions:", formattedSuggestions)
+
+              // Cache the results
+              autocompleteCache.current[cacheKey] = {
+                data: formattedSuggestions,
+                timestamp: Date.now(),
+              }
+
+              setSuggestions(formattedSuggestions)
+            } catch (error: any) {
+              clearTimeout(timeoutId)
+
+              if (error.response && error.response.status === 429) {
+                console.warn("Rate limit exceeded for autocomplete API")
+              } else {
+                console.error("Error getting location suggestions:", error)
+              }
+
+              // Try to get suggestions from the CSV fallback endpoint
+              try {
+                const fallbackResponse = await axios.get(
+                  `${apiUrl}/api/kitespots/autocomplete?query=${encodeURIComponent(value)}`,
+                )
+
+                const fallbackSuggestions = fallbackResponse.data.map(
+                  (spot: any) => `${spot.name}, ${spot.location}, ${spot.country}`,
+                )
+
+                console.log("Fallback suggestions:", fallbackSuggestions)
+
+                // Cache the results
+                autocompleteCache.current[cacheKey] = {
+                  data: fallbackSuggestions,
+                  timestamp: Date.now(),
+                }
+
+                setSuggestions(fallbackSuggestions)
+                setKitespotSuggestions(fallbackResponse.data)
+              } catch (fallbackError) {
+                console.error("Error getting fallback suggestions:", fallbackError)
+                setSuggestions([])
+              }
+            }
+          } finally {
+            setAutocompleteLoading(false)
+
+            // Clean up cache if it gets too large
+            const cacheKeys = Object.keys(autocompleteCache.current)
+            if (cacheKeys.length > 100) {
+              // Remove oldest 10 entries
+              const oldestKeys = cacheKeys
+                .sort((a, b) => autocompleteCache.current[a].timestamp - autocompleteCache.current[b].timestamp)
+                .slice(0, 10)
+
+              oldestKeys.forEach((key) => {
+                delete autocompleteCache.current[key]
+              })
+            }
+          }
+        }, 300) // 300ms debounce
+      } else {
         setSuggestions([])
-        return []
       }
     } else {
       // Clear suggestions for chat queries
       setSuggestions([])
-      return []
     }
   }
 
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+    }
+  }, [])
+
   const handleSuggestionSelect = (suggestion: string) => {
-    const location = suggestion.split(",")[0].trim()
-    setQuery(location)
-    setIsFadingOut(true)
-    setTimeout(() => {
-      setSuggestions([])
-      setIsFadingOut(false)
-    }, 200)
-    handleSearch(location)
+    // Extract the kitespot name from the suggestion (first part before the comma)
+    const spotName = suggestion.split(",")[0].trim()
+
+    // Find the selected kitespot in our suggestions
+    const selectedSpot = kitespotSuggestions.find((spot) => spot.name === spotName)
+
+    if (selectedSpot) {
+      // Log the navigation for debugging
+      console.log(`Navigating to kitespot: ${selectedSpot.name}`)
+
+      // Navigate to the kitespot page
+      router.push(`/kitespots/${encodeURIComponent(selectedSpot.name)}`)
+    } else {
+      // Even if not found in our suggestions, navigate to the kitespot page
+      // This will show the unconfirmed kitespot page
+      console.log(`Navigating to unconfirmed kitespot: ${spotName}`)
+      router.push(`/kitespots/${encodeURIComponent(spotName)}`)
+    }
   }
 
   return (
@@ -148,9 +283,16 @@ export default function Page() {
 
       <div className="w-full max-w-7xl relative">
         <UnifiedInput
-          onSearch={handleSearch}
-          onAutocomplete={handleAutocomplete}
-          placeholder="Enter a kitespot or ask me anything..."
+          query={query}
+          setQuery={setQuery}
+          suggestions={suggestions}
+          handleAutocomplete={handleAutocomplete}
+          handleSearch={() => handleSearch()}
+          loading={loading}
+          autocompleteLoading={autocompleteLoading}
+          onSuggestionSelect={handleSuggestionSelect}
+          isFadingOut={isFadingOut}
+          setIsFadingOut={setIsFadingOut}
         />
       </div>
 
@@ -183,9 +325,8 @@ export default function Page() {
                 windSpeed={results.basic.wind_speed}
                 windDirection={results.basic.wind_direction}
                 temperature={results.basic.temperature}
+                precipitation={results.basic.precipitation}
                 location={results.location}
-                condition={results.basic.condition || "Unknown"}
-                humidity={results.basic.humidity || 0}
               />
               <WindDisplay windSpeed={results.basic.wind_speed} windDirection={results.basic.wind_direction} />
 
@@ -222,7 +363,7 @@ export default function Page() {
       </main>
 
       <footer className="mt-auto pt-8 text-center text-sm text-slate-600 dark:text-slate-400">
-        © {new Date().getFullYear()} Kiteaways - Find the perfect wind for your next adventure
+        &copy; {new Date().getFullYear()} Kiteaways - Find the perfect wind for your next adventure
       </footer>
     </div>
   )

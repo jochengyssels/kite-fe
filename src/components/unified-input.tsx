@@ -2,152 +2,162 @@
 
 import type React from "react"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect, type Dispatch, type SetStateAction } from "react"
+import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import { Search, Send, X } from "lucide-react"
+import { Search, X, Loader2, MapPin, Database } from "lucide-react"
 
-interface UnifiedInputProps {
-  onSearch: (query: string, selectedLocation?: string) => void
-  onAutocomplete?: (query: string) => Promise<string[]>
-  placeholder?: string
-  className?: string
+export interface UnifiedInputProps {
+  query: string
+  setQuery: Dispatch<SetStateAction<string>>
+  suggestions: string[]
+  handleAutocomplete: (value: string) => Promise<void>
+  handleSearch: () => Promise<void>
+  loading: boolean
+  autocompleteLoading?: boolean
+  onSuggestionSelect: (suggestion: string) => void
+  isFadingOut: boolean
+  setIsFadingOut: Dispatch<SetStateAction<boolean>>
 }
 
 export default function UnifiedInput({
-  onSearch,
-  onAutocomplete,
-  placeholder = "Enter a kitespot or ask me anything...",
-  className,
+  query,
+  setQuery,
+  suggestions,
+  handleAutocomplete,
+  handleSearch,
+  loading,
+  autocompleteLoading = false,
+  onSuggestionSelect,
+  isFadingOut,
+  setIsFadingOut,
 }: UnifiedInputProps) {
-  const [query, setQuery] = useState("")
-  const [suggestions, setSuggestions] = useState<string[]>([])
-  const [showSuggestions, setShowSuggestions] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
-  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
+  const suggestionsRef = useRef<HTMLDivElement>(null)
 
-  const handleAutocomplete = async (value: string) => {
-    setQuery(value)
-
-    if (value.trim() && onAutocomplete) {
-      try {
-        const results = await onAutocomplete(value)
-        setSuggestions(results)
-        setShowSuggestions(results.length > 0)
-      } catch (error) {
-        console.error("Error fetching autocomplete suggestions:", error)
-        setSuggestions([])
-        setShowSuggestions(false)
+  // Handle clicks outside the suggestions dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setIsFadingOut(true)
+        setTimeout(() => {
+          setIsFadingOut(false)
+        }, 200)
       }
-    } else {
-      setSuggestions([])
-      setShowSuggestions(false)
     }
 
-    setSelectedSuggestionIndex(-1)
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [setIsFadingOut])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setQuery(value)
+    handleAutocomplete(value)
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < suggestions.length) {
-        // If a suggestion is selected, use that
-        const selectedSuggestion = suggestions[selectedSuggestionIndex]
-        setQuery(selectedSuggestion)
-        setSuggestions([])
-        setShowSuggestions(false)
-        onSearch(query, selectedSuggestion)
-      } else {
-        // Otherwise use the current query
-        onSearch(query)
-      }
-    } else if (e.key === "ArrowDown") {
-      e.preventDefault()
-      setSelectedSuggestionIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : prev))
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault()
-      setSelectedSuggestionIndex((prev) => (prev > 0 ? prev - 1 : -1))
-    } else if (e.key === "Escape") {
-      setSuggestions([])
-      setShowSuggestions(false)
-      setSelectedSuggestionIndex(-1)
+      handleSearch()
     }
   }
 
   const clearInput = () => {
     setQuery("")
-    if (inputRef.current) {
-      inputRef.current.focus()
+    setIsFadingOut(true)
+    setTimeout(() => {
+      setIsFadingOut(false)
+    }, 200)
+  }
+
+  // Format suggestion display
+  const formatSuggestion = (suggestion: string) => {
+    const parts = suggestion.split(",").map((part) => part.trim())
+    if (parts.length >= 3) {
+      return (
+        <div className="flex flex-col">
+          <span className="font-medium text-primary">{parts[0]}</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
+            <MapPin className="h-3 w-3 mr-1" />
+            {parts[1]}, {parts[2]}
+          </span>
+        </div>
+      )
     }
+    return suggestion
   }
 
   return (
-    <div className={cn("w-full relative", className)}>
-      <div
-        className={cn(
-          "relative flex items-center w-full bg-white dark:bg-slate-800 rounded-full shadow-md transition-all duration-200",
-          isFocused ? "ring-2 ring-sky-500 shadow-lg" : "hover:shadow-lg",
-        )}
-      >
-        <div className="flex-1 flex items-center">
-          <Search className="h-5 w-5 ml-4 text-slate-400" />
-          <input
+    <div className="w-full">
+      <div className="relative flex items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          <Input
             ref={inputRef}
             type="text"
-            placeholder={placeholder}
-            className="flex-1 py-4 px-3 bg-transparent border-0 focus:outline-none focus:ring-0 text-slate-900 dark:text-white placeholder:text-slate-400"
+            placeholder="Search for a location or ask a question..."
             value={query}
-            onChange={(e) => handleAutocomplete(e.target.value)}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => {
-              setTimeout(() => {
-                setIsFocused(false)
-                setShowSuggestions(false)
-              }, 200)
-            }}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
+            onFocus={() => setIsFocused(true)}
+            className="pl-10 pr-10 py-6 text-lg"
           />
           {query && (
             <button
               onClick={clearInput}
-              className="p-1 mr-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             >
-              <X className="h-4 w-4" />
+              <X size={18} />
             </button>
           )}
         </div>
-        <Button
-          onClick={() => onSearch(query)}
-          disabled={!query}
-          className={cn(
-            "rounded-full h-10 w-10 mr-1 flex items-center justify-center",
-            query ? "bg-sky-600 hover:bg-sky-700" : "bg-slate-200 dark:bg-slate-700",
-          )}
-        >
-          <Send className="h-4 w-4" />
+        <Button onClick={() => handleSearch()} disabled={loading || !query.trim()} className="ml-2 px-6 py-6">
+          {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Search"}
         </Button>
       </div>
 
       {/* Suggestions dropdown */}
-      {showSuggestions && (
-        <div className="absolute z-10 mt-1 w-full bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1">
-          {suggestions.map((suggestion, index) => (
-            <div
-              key={index}
-              className={cn(
-                "px-4 py-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700",
-                selectedSuggestionIndex === index && "bg-slate-100 dark:bg-slate-700",
-              )}
-              onClick={() => {
-                setQuery(suggestion)
-                setSuggestions([])
-                setShowSuggestions(false)
-                onSearch(query, suggestion)
-              }}
-            >
-              {suggestion}
+      {(suggestions.length > 0 || autocompleteLoading) && !isFadingOut && (
+        <div
+          ref={suggestionsRef}
+          className={`absolute z-10 mt-1 w-full bg-white dark:bg-slate-800 shadow-lg rounded-md overflow-hidden transition-opacity duration-200 border border-gray-200 dark:border-gray-700 ${
+            isFadingOut ? "opacity-0" : "opacity-100"
+          }`}
+        >
+          <div className="py-1 px-2 bg-gray-50 dark:bg-slate-700 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
+            <div className="flex items-center">
+              <Database className="h-3 w-3 mr-1" />
+              Database Kitespot Suggestions
             </div>
-          ))}
+            {autocompleteLoading && <Loader2 className="h-3 w-3 animate-spin ml-2" />}
+          </div>
+
+          {autocompleteLoading ? (
+            <div className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">Searching database...</div>
+          ) : suggestions.length > 0 ? (
+            <ul className="py-1">
+              {suggestions.map((suggestion, index) => (
+                <li key={index}>
+                  <button
+                    className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                    onClick={() => onSuggestionSelect(suggestion)}
+                  >
+                    {formatSuggestion(suggestion)}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">No matching kitespots found</div>
+          )}
         </div>
       )}
     </div>

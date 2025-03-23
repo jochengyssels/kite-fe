@@ -1,87 +1,131 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Cloud, CloudRain, Droplets, Sun, Thermometer, Wind } from "lucide-react"
+import { Wind, Thermometer, Droplets, MapPin } from "lucide-react"
 
-interface RealtimeWeatherProps {
-  temperature: number
+export interface RealtimeWeatherProps {
   windSpeed: number
-  windDirection: string
-  condition: "sunny" | "cloudy" | "rainy" | "stormy"
-  humidity: number
+  windDirection: number
+  temperature: number
+  precipitation: number
   location: string
 }
 
 export default function RealtimeWeather({
-  temperature,
   windSpeed,
   windDirection,
-  condition,
-  humidity,
+  temperature,
+  precipitation,
   location,
 }: RealtimeWeatherProps) {
-  // Helper function to get weather icon based on condition
-  const getWeatherIcon = (condition: string) => {
-    switch (condition) {
-      case "sunny":
-        return <Sun className="h-10 w-10 text-yellow-500" />
-      case "cloudy":
-        return <Cloud className="h-10 w-10 text-slate-400" />
-      case "rainy":
-        return <CloudRain className="h-10 w-10 text-blue-400" />
-      case "stormy":
-        return <CloudRain className="h-10 w-10 text-purple-500" />
-      default:
-        return <Sun className="h-10 w-10 text-yellow-500" />
-    }
+  // Convert wind direction to cardinal direction
+  const getWindDirection = (degrees: number) => {
+    const directions = [
+      "N",
+      "NNE",
+      "NE",
+      "ENE",
+      "E",
+      "ESE",
+      "SE",
+      "SSE",
+      "S",
+      "SSW",
+      "SW",
+      "WSW",
+      "W",
+      "WNW",
+      "NW",
+      "NNW",
+    ]
+    const index = Math.round(degrees / 22.5) % 16
+    return directions[index]
   }
 
-  // Function to determine wind quality for kiteboarding
-  const getWindQuality = (speed: number) => {
-    if (speed < 8) return { label: "Too Light", color: "bg-slate-400" }
-    if (speed < 12) return { label: "Light", color: "bg-blue-400" }
-    if (speed < 18) return { label: "Good", color: "bg-green-500" }
-    if (speed < 25) return { label: "Strong", color: "bg-yellow-500" }
-    return { label: "Very Strong", color: "bg-red-500" }
+  // Format wind speed with units
+  const formatWindSpeed = (speed: number) => {
+    return `${speed.toFixed(1)} m/s (${(speed * 1.944).toFixed(1)} knots)`
   }
-
-  const windQuality = getWindQuality(windSpeed)
 
   return (
-    <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm shadow-md">
+    <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <Thermometer className="h-5 w-5 text-primary" />
-            Current Weather
-          </span>
-          <span className="text-sm font-normal text-muted-foreground">{location}</span>
+        <CardTitle className="flex items-center gap-2">
+          <MapPin className="h-5 w-5 text-sky-600 dark:text-sky-400" />
+          Current Conditions for {location}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {getWeatherIcon(condition)}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center gap-3">
+            <Wind className="h-10 w-10 text-sky-600 dark:text-sky-400" />
             <div>
-              <div className="text-3xl font-bold">{temperature}°C</div>
-              <div className="text-sm text-muted-foreground capitalize">{condition}</div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Wind</p>
+              <p className="text-xl font-semibold">{formatWindSpeed(windSpeed)}</p>
+              <p className="text-sm">
+                Direction: {getWindDirection(windDirection)} ({windDirection}°)
+              </p>
             </div>
           </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-end gap-2">
-              <Wind className="h-4 w-4 text-primary" />
-              <span className="font-medium">{windSpeed} knots</span>
-              <Badge className={`${windQuality.color} ml-1`}>{windQuality.label}</Badge>
+
+          <div className="flex items-center gap-3">
+            <Thermometer className="h-10 w-10 text-orange-500" />
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Temperature</p>
+              <p className="text-xl font-semibold">{temperature}°C</p>
+              <p className="text-sm">{temperature < 10 ? "Cold" : temperature < 20 ? "Mild" : "Warm"}</p>
             </div>
-            <div className="flex items-center justify-end gap-2">
-              <Droplets className="h-4 w-4 text-blue-500" />
-              <span>{humidity}% humidity</span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Droplets className="h-10 w-10 text-blue-500" />
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Precipitation</p>
+              <p className="text-xl font-semibold">{precipitation} mm</p>
+              <p className="text-sm">
+                {precipitation < 0.5 ? "No rain" : precipitation < 4 ? "Light rain" : "Heavy rain"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 flex items-center justify-center">
+              <div className={`h-6 w-6 rounded-full ${getKiteConditionColor(windSpeed)}`}></div>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Kite Conditions</p>
+              <p className="text-xl font-semibold">{getKiteCondition(windSpeed)}</p>
+              <p className="text-sm">{getKiteRecommendation(windSpeed)}</p>
             </div>
           </div>
         </div>
       </CardContent>
     </Card>
   )
+}
+
+// Helper functions for kite recommendations
+function getKiteCondition(windSpeed: number) {
+  if (windSpeed < 4) return "Too Light"
+  if (windSpeed < 8) return "Light"
+  if (windSpeed < 12) return "Good"
+  if (windSpeed < 18) return "Strong"
+  return "Too Strong"
+}
+
+function getKiteConditionColor(windSpeed: number) {
+  if (windSpeed < 4) return "bg-gray-300 dark:bg-gray-600"
+  if (windSpeed < 8) return "bg-yellow-400"
+  if (windSpeed < 12) return "bg-green-500"
+  if (windSpeed < 18) return "bg-orange-500"
+  return "bg-red-500"
+}
+
+function getKiteRecommendation(windSpeed: number) {
+  if (windSpeed < 4) return "Not suitable for kitesurfing"
+  if (windSpeed < 8) return "Use large kite (12-17m²)"
+  if (windSpeed < 12) return "Ideal conditions (9-12m²)"
+  if (windSpeed < 18) return "Use small kite (5-8m²)"
+  return "Experts only, smallest kite"
 }
 
