@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
-import { getKiteSpotForecast } from "@/app/services/api-service" // Updated import path to match your file structure
-
+import { getKiteSpotForecast } from "@/lib/kitespots-server"
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
     const forecast = await getKiteSpotForecast(params.id)

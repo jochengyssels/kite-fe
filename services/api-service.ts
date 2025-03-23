@@ -16,19 +16,6 @@ export interface KiteSpot {
   rating?: number
 }
 
-// Interface for forecast data
-export interface KiteSpotForecast {
-  id: string
-  spot_id: string
-  date: string
-  wind_speed: number
-  wind_direction: string
-  temperature: number
-  precipitation: number
-  wave_height?: number
-  conditions: "Excellent" | "Good" | "Fair" | "Poor"
-}
-
 // Get the API base URL from environment variable
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
@@ -215,19 +202,6 @@ export async function getKiteSpotsByMonth(month: string): Promise<KiteSpot[]> {
   } catch (error) {
     console.error(`Error fetching kitespots for month ${month}:`, error)
     return []
-  }
-}
-
-// Function to get forecast for a specific kite spot
-export async function getKiteSpotForecast(spotId: string): Promise<KiteSpotForecast[] | null> {
-  try {
-    return await fetchWithErrorHandling<KiteSpotForecast[] | null>(
-      `${API_BASE_URL}/api/kitespots/${encodeURIComponent(spotId)}/forecast`,
-      `Failed to fetch forecast for spot: ${spotId}`,
-    )
-  } catch (error) {
-    console.error(`Error fetching forecast for spot ${spotId}:`, error)
-    return null
   }
 }
 

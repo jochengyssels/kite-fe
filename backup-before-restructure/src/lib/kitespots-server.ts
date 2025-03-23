@@ -2,7 +2,7 @@
 // to maintain backward compatibility
 
 import { redirect } from "next/navigation"
-import type { KiteSpotForecast } from "@/app/services/api-service" // Updated import path to match your file structure
+import type { KiteSpotForecast } from "@/services/api-service"
 
 // This is just a placeholder to prevent import errors
 // All actual functionality should use the client-side API service

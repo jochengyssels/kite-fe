@@ -188,7 +188,7 @@ export async function getRecommendedKiteSpots(difficulty?: string, month?: strin
   }
 }
 
-// New function to search kitespots by name or location
+// Function to search kitespots by name or location
 export async function searchKiteSpots(query: string): Promise<KiteSpot[]> {
   try {
     return (
@@ -203,7 +203,7 @@ export async function searchKiteSpots(query: string): Promise<KiteSpot[]> {
   }
 }
 
-// New function to get spots by month
+// Function to get spots by month
 export async function getKiteSpotsByMonth(month: string): Promise<KiteSpot[]> {
   try {
     return (
@@ -223,11 +223,10 @@ export async function getKiteSpotForecast(spotId: string): Promise<KiteSpotForec
   try {
     return await fetchWithErrorHandling<KiteSpotForecast[] | null>(
       `${API_BASE_URL}/api/kitespots/${encodeURIComponent(spotId)}/forecast`,
-      `Failed to fetch forecast for spot: ${spotId}`,
-    )
+      `Failed to fetch forecast for spot: ${spotId}`
+    );
   } catch (error) {
     console.error(`Error fetching forecast for spot ${spotId}:`, error)
     return null
   }
 }
-

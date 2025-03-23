@@ -1,0 +1,10 @@
+// This file re-exports functions from the api-service for backward compatibility
+import { 
+  getKiteSpotByName, 
+  getAllKiteSpots, 
+  getKiteSpotForecast,
+  KiteSpotForecast
+} from "@/services/api-service";
+;
+
+// You can add any server-specific logic here if needed
