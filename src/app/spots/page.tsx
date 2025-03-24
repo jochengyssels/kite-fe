@@ -1,3 +1,9 @@
+// Add this to your spots page to disable static generation while debugging
+export const dynamic = "force-dynamic"
+
+// Rest of your spots page code...
+
+
 import { Suspense } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"

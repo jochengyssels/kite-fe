@@ -1,15 +1,15 @@
 // Shared types used by both frontend and backend
+// Shared types for kitespot data
+
+// Normalized KiteSpot interface used throughout the application
 export interface KiteSpot {
   id?: string
   name: string
   location: string
   country: string
   description?: string
-  image_url?: string
-  lat?: number
-  lng?: number
-  latitude: number
-  longitude: number
+  lat: number // Only use lat/lng for coordinates
+  lng: number // Only use lat/lng for coordinates
   difficulty?: string
   water_type?: string
   facilities?: string[]
@@ -23,6 +23,33 @@ export interface KiteSpot {
   crowd_level?: number
   overall_rating?: number
 }
+
+// API response interface which might have either coordinate format
+export interface KiteSpotResponse {
+  id?: string
+  name: string
+  location?: string
+  country?: string
+  description?: string
+  lat?: number
+  lng?: number
+  latitude?: number
+  longitude?: number
+  difficulty?: string
+  water_type?: string
+  facilities?: string[]
+  best_months?: string[]
+  wave_spot?: boolean
+  flat_water?: boolean
+  suitable_for_beginners?: boolean
+  probability?: number
+  wind_reliability?: number
+  water_quality?: number
+  crowd_level?: number
+  overall_rating?: number
+}
+
+
   
   export interface TimeSlot {
     time: string

@@ -53,16 +53,36 @@ export async function getSpotsByCountry(country: string): Promise<KiteSpot[]> {
   return spots.filter((spot) => spot.country.toLowerCase() === country.toLowerCase())
 }
 
-export async function getSpotsByDifficulty(difficulty: string): Promise<KiteSpot[]> {
+
+export async function getSpotsByDifficulty(difficulty?: string): Promise<KiteSpot[]> {
   const spots = await getAllKiteSpots()
-  return spots.filter((spot) => spot.difficulty.toLowerCase() === difficulty.toLowerCase())
+  
+  // If difficulty is not provided, return all spots
+  if (!difficulty) {
+    return spots
+  }
+  
+  // Safely convert to lowercase and filter
+  const difficultyLower = difficulty.toLowerCase()
+  return spots.filter((spot) => 
+    spot.difficulty && spot.difficulty.toLowerCase() === difficultyLower
+  )
 }
 
-export async function getSpotsByWaterType(waterType: string): Promise<KiteSpot[]> {
+export async function getSpotsByWaterType(waterType?: string): Promise<KiteSpot[]> {
   const spots = await getAllKiteSpots()
-  return spots.filter((spot) => spot.water_type.toLowerCase() === waterType.toLowerCase())
+  
+  // If waterType is not provided, return all spots
+  if (!waterType) {
+    return spots
+  }
+  
+  // Safely convert to lowercase and filter
+  const waterTypeLower = waterType.toLowerCase()
+  return spots.filter((spot) => 
+    spot.water_type && spot.water_type.toLowerCase() === waterTypeLower
+  )
 }
-
 export async function getSpotByName(name: string): Promise<KiteSpot | null> {
   try {
     const spots = await getAllKiteSpots()

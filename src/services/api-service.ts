@@ -230,3 +230,4 @@ export async function getKiteSpotForecast(spotId: string): Promise<KiteSpotForec
     return null
   }
 }
+

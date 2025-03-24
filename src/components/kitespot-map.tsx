@@ -42,7 +42,7 @@ export default function KitespotMap() {
             <div key={index} className="bg-background p-2 rounded border text-sm">
               <p className="font-bold">{spot.name}</p>
               <p className="text-xs">
-                {spot.latitude.toFixed(4)}, {spot.longitude.toFixed(4)}
+                {spot.lat.toFixed(4)}, {spot.lng.toFixed(4)}
               </p>
             </div>
           ))}

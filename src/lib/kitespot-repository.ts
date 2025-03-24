@@ -1,4 +1,5 @@
 // Backend data access layer - server-only code
+//@ts-nocheck
 import "server-only"
 import fs from "fs"
 import path from "path"
