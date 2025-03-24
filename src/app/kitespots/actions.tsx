@@ -3,7 +3,7 @@
  * This file maintains backward compatibility with existing imports
  * while using the restructured code from @/services/api-service
  */
-
+export const dynamic = 'force-dynamic'
 import { KiteSpot } from "@/services/api-service";
 
 // Re-export all types
