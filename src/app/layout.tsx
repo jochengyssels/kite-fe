@@ -1,18 +1,20 @@
-import "@/app/globals.css";
-import type { Metadata } from 'next';
-import { ThemeProvider } from "@/components/theme-provider";
-import { Inter } from 'next/font/google';
+import type React from "react"
+import "@/app/globals.css"
+import type { Metadata } from "next"
+import { ThemeProvider } from "@/components/theme-provider"
+import { Inter } from "next/font/google"
+import { Toaster } from "@/components/ui/use-toast"
 
 // Define the font
-const inter = Inter({ 
-  subsets: ['latin'],
-  variable: '--font-sans',
-});
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+})
 
 export const metadata: Metadata = {
-  title: 'Kiteaways',
-  description: 'Find the perfect wind for your next adventure',
-};
+  title: "Kiteaways",
+  description: "Find the perfect wind for your next adventure",
+}
 
 export default function RootLayout({
   children,
@@ -27,8 +29,10 @@ export default function RootLayout({
       <body>
         <ThemeProvider defaultTheme="system">
           {children}
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>
   )
 }
+

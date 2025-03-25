@@ -1,43 +1,69 @@
-import "server-only"
-
-interface KiteSpot {
+export interface KiteSpot {
   id: string
   name: string
   location: string
-  // other properties...
-}
-
-// Cache options
-const cacheOptions = {
-  // Cache for 5 minutes
-  next: { revalidate: 300 },
-}
-
-// Shared data fetching function
-export async function getKiteSpots(): Promise<KiteSpot[]> {
-  try {
-    // This could be an external API or database call
-    const response = await fetch("https://api.example.com/kitespots", cacheOptions)
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch kitespots: ${response.status}`)
-    }
-
-    return response.json()
-  } catch (error) {
-    console.error("Error fetching kitespots:", error)
-    return [] // Return empty array on error
+  country: string
+  coordinates: {
+    lat: number
+    lng: number
   }
+  description: string
+  bestFor: string[]
+  windDirection: string[]
+  waterConditions: string
+  bestSeason: string
 }
 
-// Get a single kitespot by name
-export async function getKiteSpotByName(name: string): Promise<KiteSpot | null> {
-  try {
-    const kiteSpots = await getKiteSpots()
-    return kiteSpots.find((spot) => spot.name.toLowerCase() === name.toLowerCase()) || null
-  } catch (error) {
-    console.error(`Error fetching kitespot ${name}:`, error)
-    return null
-  }
+const KITESPOTS: KiteSpot[] = [
+  {
+    id: "tarifa",
+    name: "Tarifa Beach",
+    location: "Tarifa, Spain",
+    country: "Spain",
+    coordinates: {
+      lat: 36.0128,
+      lng: -5.6012,
+    },
+    description: "Tarifa is known for its strong and consistent winds, making it a paradise for kitesurfers.",
+    bestFor: ["Advanced", "Intermediate"],
+    windDirection: ["East", "West"],
+    waterConditions: "Waves",
+    bestSeason: "Summer",
+  },
+  {
+    id: "cabarete",
+    name: "Cabarete",
+    location: "Puerto Plata, Dominican Republic",
+    country: "Dominican Republic",
+    coordinates: {
+      lat: 19.7667,
+      lng: -70.4167,
+    },
+    description:
+      "Cabarete offers a variety of conditions, from flat water lagoons to wave spots, suitable for all levels.",
+    bestFor: ["Beginner", "Intermediate", "Advanced"],
+    windDirection: ["East"],
+    waterConditions: "Flat Water & Waves",
+    bestSeason: "Winter",
+  },
+  {
+    id: "maui",
+    name: "Maui",
+    location: "Hawaii, USA",
+    country: "USA",
+    coordinates: {
+      lat: 20.7984,
+      lng: -156.3319,
+    },
+    description: "Maui is a world-class kitesurfing destination with consistent trade winds and warm waters.",
+    bestFor: ["Intermediate", "Advanced"],
+    windDirection: ["Northeast"],
+    waterConditions: "Waves",
+    bestSeason: "Summer",
+  },
+]
+
+export async function getKitespotById(id: string): Promise<KiteSpot | undefined> {
+  return KITESPOTS.find((kitespot) => kitespot.id === id)
 }
 

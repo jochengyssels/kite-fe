@@ -1,85 +1,87 @@
 "use client"
 
-import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Cloud, CloudRain, Droplets, Sun, Wind } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Wind, Cloud, CloudRain, Sun, Droplets } from "lucide-react"
 import { format } from "date-fns"
 
-interface WeatherData {
+interface ForecastItem {
   time: string
-  temperature: number
   windSpeed: number
-  windDirection: string
-  condition: "sunny" | "cloudy" | "rainy" | "stormy"
-  precipitation: number
-  humidity: number
+  windDirection: number | string
+  temperature: number
+  precipitation?: number
+  condition?: "sunny" | "cloudy" | "rainy" | "stormy"
 }
 
 interface FullForecastWeatherProps {
-  forecast: WeatherData[]
+  forecast: ForecastItem[]
 }
 
 export default function FullForecastWeather({ forecast }: FullForecastWeatherProps) {
-  const [selectedDay, setSelectedDay] = useState<number>(0)
-
-  // Helper function to get weather icon based on condition
-  const getWeatherIcon = (condition: string) => {
-    switch (condition) {
-      case "sunny":
-        return <Sun className="h-6 w-6 text-yellow-500" />
-      case "cloudy":
-        return <Cloud className="h-6 w-6 text-slate-400" />
-      case "rainy":
-        return <CloudRain className="h-6 w-6 text-blue-400" />
-      case "stormy":
-        return <CloudRain className="h-6 w-6 text-purple-500" />
-      default:
-        return <Sun className="h-6 w-6 text-yellow-500" />
-    }
-  }
-
-  // Function to determine wind quality for kiteboarding
-  const getWindQuality = (speed: number) => {
-    if (speed < 8) return { label: "Too Light", color: "bg-slate-400" }
-    if (speed < 12) return { label: "Light", color: "bg-blue-400" }
-    if (speed < 18) return { label: "Good", color: "bg-green-500" }
-    if (speed < 25) return { label: "Strong", color: "bg-yellow-500" }
-    return { label: "Very Strong", color: "bg-red-500" }
-  }
-
   // Group forecast by day
-  const days: { [key: string]: WeatherData[] } = {}
+  const groupedForecast: Record<string, ForecastItem[]> = {}
 
   forecast.forEach((item) => {
-    // Extract date from time string (assuming format like "2023-03-22T14:00:00")
-    const date = item.time.split("T")[0]
-    if (!days[date]) {
-      days[date] = []
+    const date = new Date(item.time)
+    const day = format(date, "yyyy-MM-dd")
+
+    if (!groupedForecast[day]) {
+      groupedForecast[day] = []
     }
-    days[date].push(item)
+
+    groupedForecast[day].push(item)
   })
 
-  const dayKeys = Object.keys(days)
+  // Get day names for tabs
+  const days = Object.keys(groupedForecast).map((day) => {
+    const date = new Date(day)
+    return {
+      key: day,
+      label: format(date, "EEE, MMM d"),
+    }
+  })
+
+  // Helper function to get weather icon based on condition
+  const getWeatherIcon = (item: ForecastItem) => {
+    if (item.condition) {
+      switch (item.condition) {
+        case "sunny":
+          return <Sun className="h-6 w-6 text-yellow-500" />
+        case "cloudy":
+          return <Cloud className="h-6 w-6 text-slate-400" />
+        case "rainy":
+          return <CloudRain className="h-6 w-6 text-blue-400" />
+        case "stormy":
+          return <CloudRain className="h-6 w-6 text-purple-500" />
+      }
+    }
+
+    // Default icon based on precipitation if condition not provided
+    if (item.precipitation && item.precipitation > 0.5) {
+      return <CloudRain className="h-6 w-6 text-blue-400" />
+    }
+
+    return <Sun className="h-6 w-6 text-yellow-500" />
+  }
 
   // Format time from ISO to readable format
   const formatTimeDisplay = (timeString: string) => {
     try {
       const date = new Date(timeString)
-      return format(date, "h:mm a")
+      return format(date, "h a")
     } catch (e) {
       return timeString
     }
   }
 
-  // Format date for display
-  const formatDateDisplay = (dateString: string) => {
-    try {
-      const date = new Date(dateString)
-      return format(date, "EEE, MMM d")
-    } catch (e) {
-      return dateString
-    }
+  // Get wind direction as text
+  const getWindDirectionText = (direction: number | string) => {
+    if (typeof direction === "string") return direction
+
+    const directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+    const index = Math.round(direction / 45) % 8
+    return directions[index]
   }
 
   return (
@@ -87,71 +89,50 @@ export default function FullForecastWeather({ forecast }: FullForecastWeatherPro
       <CardHeader className="pb-2">
         <CardTitle className="text-lg flex items-center gap-2">
           <Wind className="h-5 w-5 text-primary" />
-          7-Day Forecast
+          Detailed Weather Forecast
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {dayKeys.length > 0 ? (
-          <>
-            <div className="flex overflow-x-auto pb-2 mb-4 gap-2 scrollbar-hide">
-              {dayKeys.map((day, index) => (
-                <button
-                  key={day}
-                  onClick={() => setSelectedDay(index)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                    selectedDay === index
-                      ? "bg-primary text-white"
-                      : "bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600"
-                  }`}
-                >
-                  {formatDateDisplay(day)}
-                </button>
+        {days.length > 0 ? (
+          <Tabs defaultValue={days[0].key}>
+            <TabsList className="mb-4">
+              {days.map((day) => (
+                <TabsTrigger key={day.key} value={day.key}>
+                  {day.label}
+                </TabsTrigger>
               ))}
-            </div>
+            </TabsList>
 
-            {dayKeys[selectedDay] && days[dayKeys[selectedDay]] && (
-              <div className="space-y-3">
-                {days[dayKeys[selectedDay]].map((item, index) => {
-                  const windQuality = getWindQuality(item.windSpeed)
-
-                  return (
+            {days.map((day) => (
+              <TabsContent key={day.key} value={day.key}>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  {groupedForecast[day.key].map((item, index) => (
                     <div
                       key={index}
-                      className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                      className="flex flex-col items-center p-3 rounded-lg bg-slate-50 dark:bg-slate-700"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="flex flex-col items-center justify-center w-16">
-                            <span className="text-sm font-medium">{formatTimeDisplay(item.time)}</span>
-                          </div>
-
-                          <div className="flex items-center gap-3">
-                            {getWeatherIcon(item.condition)}
-                            <div>
-                              <div className="font-medium">{item.temperature}°C</div>
-                              <div className="text-xs text-muted-foreground capitalize">{item.condition}</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col items-end gap-1">
-                          <div className="flex items-center gap-2">
-                            <Wind className="h-4 w-4 text-primary" />
-                            <span className="font-medium">{item.windSpeed} knots</span>
-                            <Badge className={`${windQuality.color} ml-1`}>{windQuality.label}</Badge>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Droplets className="h-3 w-3 text-blue-500" />
-                            <span>{item.humidity}% humidity</span>
-                          </div>
-                        </div>
+                      <div className="text-sm font-medium">{formatTimeDisplay(item.time)}</div>
+                      <div className="my-2">{getWeatherIcon(item)}</div>
+                      <div className="text-lg font-bold">{item.temperature}°</div>
+                      <div className="flex items-center mt-1 text-xs text-muted-foreground">
+                        <Wind className="h-3 w-3 mr-1" />
+                        {item.windSpeed} kts
                       </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {getWindDirectionText(item.windDirection)}
+                      </div>
+                      {item.precipitation !== undefined && (
+                        <div className="flex items-center mt-1 text-xs text-muted-foreground">
+                          <Droplets className="h-3 w-3 mr-1" />
+                          {item.precipitation} mm
+                        </div>
+                      )}
                     </div>
-                  )
-                })}
-              </div>
-            )}
-          </>
+                  ))}
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
         ) : (
           <div className="text-center py-6 text-muted-foreground">No forecast data available</div>
         )}

@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useRef, useEffect, type Dispatch, type SetStateAction } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Search, X, Loader2, MapPin, Database } from "lucide-react"
+import { Search, X, Loader2, MapPin, Database, AlertCircle } from "lucide-react"
 
 export interface UnifiedInputProps {
   query: string
@@ -18,6 +18,7 @@ export interface UnifiedInputProps {
   onSuggestionSelect: (suggestion: string) => void
   isFadingOut: boolean
   setIsFadingOut: Dispatch<SetStateAction<boolean>>
+  networkError?: string | null
 }
 
 export default function UnifiedInput({
@@ -31,6 +32,7 @@ export default function UnifiedInput({
   onSuggestionSelect,
   isFadingOut,
   setIsFadingOut,
+  networkError,
 }: UnifiedInputProps) {
   const [isFocused, setIsFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -45,10 +47,13 @@ export default function UnifiedInput({
         inputRef.current &&
         !inputRef.current.contains(event.target as Node)
       ) {
-        setIsFadingOut(true)
-        setTimeout(() => {
-          setIsFadingOut(false)
-        }, 200)
+        // Only close if we're not in the middle of loading
+        if (!autocompleteLoading) {
+          setIsFadingOut(true)
+          setTimeout(() => {
+            setIsFadingOut(false)
+          }, 200)
+        }
       }
     }
 
@@ -56,7 +61,7 @@ export default function UnifiedInput({
     return () => {
       document.removeEventListener("mousedown", handleClickOutside)
     }
-  }, [setIsFadingOut])
+  }, [setIsFadingOut, autocompleteLoading])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
@@ -81,13 +86,13 @@ export default function UnifiedInput({
   // Format suggestion display
   const formatSuggestion = (suggestion: string) => {
     const parts = suggestion.split(",").map((part) => part.trim())
-    if (parts.length >= 3) {
+    if (parts.length >= 2) {
       return (
         <div className="flex flex-col">
           <span className="font-medium text-primary">{parts[0]}</span>
           <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
             <MapPin className="h-3 w-3 mr-1" />
-            {parts[1]}, {parts[2]}
+            {parts.slice(1).join(", ")}
           </span>
         </div>
       )
@@ -124,6 +129,14 @@ export default function UnifiedInput({
         </Button>
       </div>
 
+      {/* Network error message */}
+      {networkError && (
+        <div className="mt-2 text-sm text-red-500 flex items-center gap-1">
+          <AlertCircle className="h-4 w-4" />
+          <span>{networkError}</span>
+        </div>
+      )}
+
       {/* Suggestions dropdown */}
       {(suggestions.length > 0 || autocompleteLoading) && !isFadingOut && (
         <div
@@ -135,13 +148,13 @@ export default function UnifiedInput({
           <div className="py-1 px-2 bg-gray-50 dark:bg-slate-700 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
             <div className="flex items-center">
               <Database className="h-3 w-3 mr-1" />
-              Database Kitespot Suggestions
+              Location Suggestions
             </div>
             {autocompleteLoading && <Loader2 className="h-3 w-3 animate-spin ml-2" />}
           </div>
 
           {autocompleteLoading ? (
-            <div className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">Searching database...</div>
+            <div className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">Searching...</div>
           ) : suggestions.length > 0 ? (
             <ul className="py-1">
               {suggestions.map((suggestion, index) => (
@@ -156,7 +169,7 @@ export default function UnifiedInput({
               ))}
             </ul>
           ) : (
-            <div className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">No matching kitespots found</div>
+            <div className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">No matching locations found</div>
           )}
         </div>
       )}

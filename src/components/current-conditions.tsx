@@ -1,7 +1,8 @@
 "use client"
 
 import { Card, CardContent } from "@/components/ui/card"
-import { Thermometer, Wind, Compass, ArrowUpCircle } from "lucide-react"
+import { Thermometer, Wind } from "lucide-react"
+import WindDirectionArrow from "@/components/wind-direction-arrow"
 
 interface CurrentConditionsProps {
   windSpeed: number
@@ -62,12 +63,8 @@ export default function CurrentConditions({ windSpeed, windDirection, temperatur
             </div>
 
             <div className="flex flex-col items-center">
-              <div className="relative">
-                <Compass className="h-16 w-16 text-muted-foreground" />
-                <ArrowUpCircle
-                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-8 w-8 text-primary"
-                  style={{ transform: `translate(-50%, -50%) rotate(${windDirection}deg)` }}
-                />
+              <div className="relative mb-1">
+                <WindDirectionArrow direction={windDirection} size="lg" className="h-12 w-12" />
               </div>
               <span className="mt-1 font-medium">{getWindDirectionText(windDirection)}</span>
             </div>

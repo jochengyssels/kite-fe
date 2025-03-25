@@ -1,4 +1,4 @@
-import KitesurfingNews from "@/components/cards/kitesurfing-news";
+import KitesurfingNews from "@/components/cards/kitesurfing-news"
 
 export default function NewsPage() {
   return (

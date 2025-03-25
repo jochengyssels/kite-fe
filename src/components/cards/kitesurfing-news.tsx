@@ -3,79 +3,54 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Newspaper, ExternalLink, Calendar, AlertCircle, Loader2 } from "lucide-react"
-import { format } from "date-fns"
+import { format, parseISO } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-
-interface NewsSource {
-  id: string | null
-  name: string
-}
-
-interface NewsItem {
-  source: NewsSource
-  author: string | null
-  title: string
-  description: string
-  url: string
-  urlToImage: string | null
-  publishedAt: string
-  content: string
-}
+import Image from "next/image"
+import type { NewsItem } from "@/types/news"
 
 export default function KitesurfingNews() {
   const [news, setNews] = useState<NewsItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [expandedItems, setExpandedItems] = useState<Record<number, boolean>>({})
+  const [imageLoaded, setImageLoaded] = useState<Record<number, boolean>>({})
 
   useEffect(() => {
-    // In a real app, this would fetch from an actual API
-    // For demo purposes, we'll use mock data
-    const mockNews = [
-      {
-        source: { id: "kitesurfmag", name: "Kitesurf Magazine" },
-        author: "Sarah Johnson",
-        title: "New World Record Set for Longest Kitesurfing Journey",
-        description:
-          "Professional kitesurfer Alex Thompson has set a new world record for the longest continuous kitesurfing journey, covering over 500km along the coast of Australia in just 24 hours.",
-        url: "#",
-        urlToImage: "/placeholder.svg?height=400&width=600",
-        publishedAt: "2023-03-15T09:30:00Z",
-        content:
-          "Professional kitesurfer Alex Thompson has set a new world record for the longest continuous kitesurfing journey, covering over 500km along the coast of Australia in just 24 hours. The journey, which started in Sydney and ended in Brisbane, was completed despite challenging wind conditions and required exceptional endurance.",
-      },
-      {
-        source: { id: "kiteboarding", name: "Kiteboarding International" },
-        author: "Mike Peterson",
-        title: "Revolutionary New Kite Design Promises Better Performance in Light Winds",
-        description:
-          "A startup company has unveiled a new kite design that claims to provide superior performance in light wind conditions, potentially extending the kitesurfing season for many enthusiasts.",
-        url: "#",
-        urlToImage: "/placeholder.svg?height=400&width=600",
-        publishedAt: "2023-03-10T14:15:00Z",
-        content:
-          "A startup company has unveiled a new kite design that claims to provide superior performance in light wind conditions, potentially extending the kitesurfing season for many enthusiasts. The innovative design uses a new aerodynamic profile and lightweight materials to generate more power from less wind.",
-      },
-      {
-        source: { id: "watersports", name: "Watersports Today" },
-        author: "Lisa Chen",
-        title: "Top 5 Kitesurfing Destinations for Summer 2023",
-        description:
-          "Discover the best kitesurfing spots to visit this summer, from the consistent winds of Tarifa to the flat waters of Dakhla Lagoon.",
-        url: "#",
-        urlToImage: "/placeholder.svg?height=400&width=600",
-        publishedAt: "2023-03-05T11:45:00Z",
-        content:
-          "As summer approaches, kitesurfers around the world are planning their next adventures. Our experts have compiled a list of the top 5 destinations that offer the perfect combination of wind conditions, accommodation options, and stunning scenery. From the consistent winds of Tarifa to the flat waters of Dakhla Lagoon, these spots should be on every kitesurfer's bucket list.",
-      },
-    ]
+    const fetchNews = async () => {
+      try {
+        setLoading(true)
 
-    setTimeout(() => {
-      setNews(mockNews)
-      setLoading(false)
-    }, 1000)
+        const response = await fetch("/api/kitesurfing-news")
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch news: ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        if (data.status === "error") {
+          throw new Error(data.error || "Unknown error fetching news")
+        }
+
+        setNews(data.articles || [])
+
+        // Initialize image loaded state
+        const initialLoadState: Record<number, boolean> = {}
+        data.articles.forEach((_: any, index: number) => {
+          initialLoadState[index] = false
+        })
+        setImageLoaded(initialLoadState)
+      } catch (error) {
+        console.error("Error fetching news:", error)
+        setError(error instanceof Error ? error.message : "Failed to load kitesurfing news. Please try again later.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchNews()
   }, [])
 
   const toggleExpand = (index: number) => {
@@ -85,12 +60,37 @@ export default function KitesurfingNews() {
     }))
   }
 
+  const handleImageLoad = (index: number) => {
+    setImageLoaded((prev) => ({
+      ...prev,
+      [index]: true,
+    }))
+  }
+
+  const handleImageError = (index: number) => {
+    // If image fails to load, mark it as loaded to remove the loading state
+    setImageLoaded((prev) => ({
+      ...prev,
+      [index]: true,
+    }))
+  }
+
   const getTimeAgo = (dateString: string) => {
     try {
-      return format(new Date(dateString), "MMM d, yyyy")
+      return format(parseISO(dateString), "MMM d, yyyy")
     } catch (e) {
-      return "Recently"
+      // Try to parse as RFC 822 date format (common in RSS feeds)
+      try {
+        return format(new Date(dateString), "MMM d, yyyy")
+      } catch (e) {
+        return "Recently"
+      }
     }
+  }
+
+  // Function to strip HTML tags from content
+  const stripHtml = (html: string) => {
+    return html.replace(/<[^>]*>/g, "")
   }
 
   return (
@@ -100,7 +100,7 @@ export default function KitesurfingNews() {
           <Newspaper className="h-5 w-5" />
           Kitesurfing News
         </CardTitle>
-        <CardDescription>Stay updated with the latest kitesurfing news and events</CardDescription>
+        <CardDescription>Latest news from IKSurfMag</CardDescription>
       </CardHeader>
       <ScrollArea className="h-[600px]">
         <CardContent className="pt-4">
@@ -126,8 +126,18 @@ export default function KitesurfingNews() {
                   {item.urlToImage && (
                     <div className="relative w-full h-48 mb-3 overflow-hidden rounded-lg bg-slate-100">
                       <div
-                        className="absolute inset-0 bg-cover bg-center transition-transform hover:scale-105 duration-500"
-                        style={{ backgroundImage: `url(${item.urlToImage})` }}
+                        className={`absolute inset-0 transition-opacity duration-300 ${imageLoaded[index] ? "opacity-0" : "opacity-100"}`}
+                      >
+                        <div className="w-full h-full animate-pulse bg-slate-200 dark:bg-slate-700"></div>
+                      </div>
+                      <Image
+                        src={item.urlToImage || "/placeholder.svg?height=300&width=600"}
+                        alt={item.title}
+                        fill
+                        className={`object-cover transition-all duration-500 ${imageLoaded[index] ? "opacity-100 scale-100" : "opacity-0 scale-105"}`}
+                        onLoad={() => handleImageLoad(index)}
+                        onError={() => handleImageError(index)}
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       />
                       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
                         <div className="flex items-center gap-2 text-white text-xs">
@@ -139,7 +149,7 @@ export default function KitesurfingNews() {
                   )}
 
                   <h3 className="text-lg font-semibold mb-2 line-clamp-2 hover:text-blue-600 transition-colors">
-                    <a href={item.url} className="hover:underline">
+                    <a href={item.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
                       {item.title}
                     </a>
                   </h3>
@@ -152,7 +162,7 @@ export default function KitesurfingNews() {
                   </div>
 
                   <p className={`text-sm text-slate-600 ${expandedItems[index] ? "" : "line-clamp-3"}`}>
-                    {item.description}
+                    {stripHtml(item.description)}
                   </p>
 
                   <div className="flex items-center justify-between mt-3">
@@ -162,6 +172,8 @@ export default function KitesurfingNews() {
 
                     <a
                       href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 transition-colors"
                     >
                       Visit source <ExternalLink className="h-3 w-3" />

@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Loader2, MapPin, Wind, AlertTriangle } from "lucide-react"
 import Link from "next/link"
-import { getAllKiteSpots } from "@/app/kitespots/actions"
-import type { KiteSpot, KiteSpotResponse } from "@/types/kitespot"
+import { getAllKiteSpots } from "@/services/kitespot-service"
+import type { KiteSpot } from "@/types/kitespot"
 
 interface SpotRecommendationsProps {
   limit?: number
@@ -23,7 +23,7 @@ export default function SpotRecommendations({ limit = 3 }: SpotRecommendationsPr
       try {
         setLoading(true)
         setError(null)
-        const data = (await getAllKiteSpots()) as KiteSpotResponse[]
+        const data = await getAllKiteSpots()
 
         // Filter out spots without required fields
         const validData = data.filter(
@@ -31,42 +31,12 @@ export default function SpotRecommendations({ limit = 3 }: SpotRecommendationsPr
             spot.location &&
             spot.country &&
             // Check for coordinates in either format
-            ((spot.lat !== undefined && spot.lng !== undefined) ||
-              (spot.latitude !== undefined && spot.longitude !== undefined)),
+            spot.lat !== undefined &&
+            spot.lng !== undefined,
         )
 
-        // Map to ensure all required fields are present and standardize to lat/lng
-        const mappedData = validData.map((spot) => {
-          // Extract the coordinates, prioritizing lat/lng if available
-          const lat = spot.lat !== undefined ? spot.lat : spot.latitude || 0
-          const lng = spot.lng !== undefined ? spot.lng : spot.longitude || 0
-
-          // Create a new normalized KiteSpot object
-          return {
-            id: spot.id || spot.name,
-            name: spot.name,
-            location: spot.location || "Unknown location",
-            country: spot.country || "Unknown country",
-            description: spot.description,
-            lat,
-            lng,
-            difficulty: spot.difficulty,
-            water_type: spot.water_type,
-            facilities: spot.facilities,
-            best_months: spot.best_months,
-            wave_spot: spot.wave_spot,
-            flat_water: spot.flat_water,
-            suitable_for_beginners: spot.suitable_for_beginners,
-            probability: spot.probability,
-            wind_reliability: spot.wind_reliability,
-            water_quality: spot.water_quality,
-            crowd_level: spot.crowd_level,
-            overall_rating: spot.overall_rating,
-          }
-        })
-
         // Sort by wind reliability or probability
-        const sortedData = mappedData.sort((a, b) => {
+        const sortedData = validData.sort((a, b) => {
           const aScore = a.wind_reliability || a.probability || 0
           const bScore = b.wind_reliability || b.probability || 0
           return bScore - aScore
