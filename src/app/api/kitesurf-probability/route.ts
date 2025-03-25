@@ -1,16 +1,23 @@
 import { NextResponse } from "next/server"
-import GroqClient from "groq"
+import Groq from "groq"
 
-interface GroqConfig {
-  apiKey: string;
-  baseURL?: string;
+declare module "groq" {
+  export default class Groq {
+    constructor(config: { apiKey: string });
+    chat: {
+      completions: {
+        create: (params: any) => Promise<any>;
+      };
+    };
+  }
 }
 
 const GROQ_API_KEY = "gsk_RKeG7qd7lpOxnK2k9EHpWGdyb3FYICtRBvXSfMfiFdfZlwjpUQ6"
 
 // Initialize the Groq client
-// @ts-ignore
-const groq = new GroqClient(GROQ_API_KEY)
+const groq = new Groq({
+  apiKey: GROQ_API_KEY,
+})
 
 export async function POST(request: Request) {
   try {

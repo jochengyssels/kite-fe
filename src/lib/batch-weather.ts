@@ -1,3 +1,42 @@
+const MAX_RETRIES = 3
+const RETRY_DELAY_MS = 1000
+
+interface Destination {
+  name: string
+  location: string
+  coordinates: {
+    lat: number
+    lon: number
+  }
+}
+
+const POPULAR_DESTINATIONS: Destination[] = [
+  {
+    name: "Tarifa",
+    location: "Spain",
+    coordinates: {
+      lat: 36.0128,
+      lon: -5.6012,
+    },
+  },
+  {
+    name: "Cabarete",
+    location: "Dominican Republic",
+    coordinates: {
+      lat: 19.7667,
+      lon: -70.4167,
+    },
+  },
+  {
+    name: "Maui",
+    location: "USA",
+    coordinates: {
+      lat: 20.7984,
+      lon: -156.3319,
+    },
+  },
+]
+
 async function fetchWithRetry(url: string, retryCount = 0): Promise<any> {
   try {
     const response = await fetch(url, {

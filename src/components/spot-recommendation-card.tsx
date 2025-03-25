@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Loader2, MapPin, Wind, AlertTriangle } from "lucide-react"
 import Link from "next/link"
-import { getAllKiteSpots } from "@/services/kitespot-service"
+import { getAllKiteSpots } from "../../services/kitespot-service"
 import type { KiteSpot } from "@/types/kitespot"
 
 interface SpotRecommendationsProps {

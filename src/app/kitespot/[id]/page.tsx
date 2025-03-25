@@ -9,10 +9,11 @@ import { getKitespotById } from "@/lib/kitespots"
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar"
 import "react-circular-progressbar/dist/styles.css"
 import { ChevronDown, ChevronUp, Wind, Waves, Clock, AlertTriangle, MapPin, Calendar, Info } from "lucide-react"
+import type { KiteSpot } from "@/lib/kitespots"
 
 export default function KitespotPage() {
   const { id } = useParams()
-  const [kitespot, setKitespot] = useState<any>(null)
+  const [kitespot, setKitespot] = useState<KiteSpot | null>(null)
   const [loading, setLoading] = useState(true)
   const [showDetails, setShowDetails] = useState(false)
   const [kitesurfProbability, setKitesurfProbability] = useState<any>(null)
@@ -23,16 +24,19 @@ export default function KitespotPage() {
       try {
         // Fetch kitespot data
         const spotData = await getKitespotById(id as string)
+        if (!spotData) {
+          throw new Error("Kitespot not found")
+        }
         setKitespot(spotData)
 
         // Fetch weather data
-        const weatherResponse = await fetch(`/api/weather/realtime?lat=${spotData.latitude}&lon=${spotData.longitude}`)
+        const weatherResponse = await fetch(`/api/weather/realtime?lat=${spotData.coordinates.lat}&lon=${spotData.coordinates.lng}`)
         const weatherData = await weatherResponse.json()
         setWeather(weatherData)
 
         // Fetch kitesurf probability
         const probabilityResponse = await fetch(
-          `/api/kitesurf-probability?location=${spotData.name}&lat=${spotData.latitude}&lon=${spotData.longitude}`,
+          `/api/kitesurf-probability?location=${spotData.name}&lat=${spotData.coordinates.lat}&lon=${spotData.coordinates.lng}`,
         )
         const probabilityData = await probabilityResponse.json()
         setKitesurfProbability(probabilityData)
